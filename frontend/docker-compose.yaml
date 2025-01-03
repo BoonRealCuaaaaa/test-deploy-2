@@ -1,0 +1,44 @@
+services:
+  jarvis-helpdesk-admin:
+    build:
+      context: ./jarvis-helpdesk-plugins
+      dockerfile: Dockerfile
+    networks:
+      - jarvis-plugin-admin
+    ports:
+      - "8888:8888"
+    restart: "unless-stopped"
+    expose:
+      - 8888
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      # - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    ports:
+      - 80:80
+      - 443:443
+    restart: "unless-stopped"
+    networks:
+      - jarvis-plugin-admin
+    env_file:
+      - ./nginx/.env
+    entrypoint: >
+      /bin/bash -c "printenv && envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - jarvis-helpdesk-admin
+      - certbot
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --keep-until-expiring --email hiiback0608@gmail.com -d jarvis-admin.shop --agree-tos
+
+networks:
+  jarvis-plugin-admin:

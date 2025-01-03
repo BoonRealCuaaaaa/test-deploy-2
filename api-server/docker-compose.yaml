@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: jarvis_helpdesk_plugins_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: "unless-stopped"
+    networks:
+      - jarvis-plugin-network
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      # - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    ports:
+      - 80:80
+      - 443:443
+    restart: "unless-stopped"
+    networks:
+      - jarvis-plugin-network
+    env_file:
+      - ./nginx/.env
+    entrypoint: >
+      /bin/bash -c "printenv && envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - jarvis-helpdesk-plugin-api
+      - jarvis-helpdesk-ai-module
+      - certbot
